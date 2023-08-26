@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Terminal</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: monospace;
+            font-size: 20px;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #terminal-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 1px solid white;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+
+        #terminal {
+            width: 100%;
+            background-color: black;
+            color: white;
+            border: none;
+            outline: none;
+            resize: none;
+            white-space: pre-wrap;
+        }
+
+        #commandInputContainer {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding-top: 5px;
+        }
+
+        #commandPrompt {
+            color: white;
+            margin-right: 5px;
+        }
+
+        #commandInput {
+            color: white;
+            background-color: transparent;
+            border: none;
+            outline: none;
+            flex-grow: 1;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal-container">
+        <pre id="terminal"></pre>
+        <div id="commandInputContainer">
+            <span id="commandPrompt">[root]$</span>
+            <input type="text" id="commandInput" autocomplete="off">
+        </div>
+    </div>
+
+    <script>
+        // 禁用右键菜单
+        document.addEventListener("contextmenu", function(event) {
+            event.preventDefault();
+        });
+
+        // 禁用快捷键
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "F12" || (event.ctrlKey && event.shiftKey && event.key === "I")) {
+                event.preventDefault();
+            }
+        });
+
+        var terminal = document.getElementById("terminal");
+        var commandInput = document.getElementById("commandInput");
+        var commandHistory = [];
+        var historyIndex = -1;
+
+        function executeCommand(command) {
+            if (command.trim() === "") {
+                return;
+            }
+
+            var output = "[root]$ " + command + "\n";
+            terminal.textContent += output;
+
+            if (command.startsWith("print (")) {
+                var result;
+                try {
+                    result = eval(command.slice(7, -1));
+                } catch (error) {
+                    result = "Error: " + error.message;
+                }
+                terminal.textContent += result + "\n";
+            } else if (command === "help") {
+                var helpText = "可用命令：\n\n" +
+                                "print (<值>) - 打印值\n" +
+                                "baidu <要搜索的内容> - 百度搜索\n" +
+                                "bing <要搜索的内容> - 必应搜索\n" +
+                                "github <要搜索的内容> - GitHub搜索\n" +
+                                "bilibili <要搜索的内容> - bilibili搜索" +
+                                "time - 显示当前时间\n" +
+                                "date - 显示当前日期\n" +
+                                "clear - 清空终端\n" +
+                                "color <颜色代码> - 改变文字颜色\n" +
+                                "random - 生成随机数\n\n";
+                terminal.textContent += helpText;
+            } else if (command.startsWith("baidu ")) {
+                var searchQuery = command.slice(6);
+                var searchURL = "https://www.baidu.com/s?wd=" + encodeURIComponent(searchQuery);
+                window.open(searchURL, "_blank");
+            } else if (command.startsWith("bing ")) {
+                var searchQuery = command.slice(5);
+                var searchURL = "https://www.bing.com/search?q=" + encodeURIComponent(searchQuery);
+                window.open(searchURL, "_blank");
+            } else if (command.startsWith("github ")) {
+                var searchQuery = command.slice(7);
+                var searchURL = "https://github.com/search?q=" + encodeURIComponent(searchQuery);
+                window.open(searchURL, "_blank");
+            } else if (command === "time") {
+                var currentTime = new Date().toLocaleTimeString();
+                terminal.textContent += currentTime + "\n";
+            } else if (command === "date") {
+                var currentDate = new Date().toLocaleDateString();
+                terminal.textContent += currentDate + "\n";
+            } else if (command === "clear") {
+                terminal.textContent = "";
+            } else if (command.startsWith("color ")) {
+                var colorCode = command.slice(6);
+                terminal.style.color = colorCode;
+            } else if (command === "random") {
+                var randomNum = Math.floor(Math.random() * 1000);
+                terminal.textContent += randomNum + "\n";
+            } else if (command.startsWith("bilibili ")) {
+                var searchQuery = command.slice(9);
+                var searchURL = "https://search.bilibili.com/all?keyword=" + encodeURIComponent(searchQuery);
+                window.open(searchURL, "_blank");
+            } else {
+                var errorText = "无效的命令\n";
+                terminal.textContent += errorText;
+            }
+
+            terminal.scrollTop = terminal.scrollHeight;
+
+            commandHistory.push(command);
+            historyIndex = commandHistory.length;
+        }
+
+        function handleCommandInput(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+
+                var command = commandInput.value.trim();
+                commandInput.value = "";
+
+                executeCommand(command);
+            } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = commandHistory[historyIndex];
+                }
+            } else if (event.key === "ArrowDown") {
+                event.preventDefault();
+
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    commandInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    commandInput.value = "";
+                }
+            }
+        }
+
+        function disableRightClick(event) {
+            event.preventDefault();
+        }
+
+        // 禁用右键菜单
+        document.addEventListener("contextmenu", disableRightClick);
+
+        // 粘贴命令到输入框
+        commandInput.addEventListener("paste", function(event) {
+            event.preventDefault();
+            var pasteText = (event.clipboardData || window.clipboardData).getData('text');
+            insertTextAtCursor(commandInput, pasteText.trim());
+        });
+
+        // 在光标位置插入文本
+        function insertTextAtCursor(element, text) {
+            var start = element.selectionStart;
+            var end = element.selectionEnd;
+            element.value = element.value.slice(0, start) + text + element.value.slice(end);
+            element.selectionStart = element.selectionEnd = start + text.length;
+        }
+
+        commandInput.addEventListener("keydown", handleCommandInput);
+
+        commandInput.focus();
+    </script>
+</body>
+</html>
